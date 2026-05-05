@@ -1,11 +1,19 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import tensorflow as tf
-from tensorflow.keras.preprocessing import image
 import numpy as np
 import os
 from PIL import Image
 import io
+
+# TensorFlow is optional - if it OOMs on free tier, use mock predictions
+TF_AVAILABLE = False
+try:
+    import tensorflow as tf
+    from tensorflow.keras.preprocessing import image as keras_image
+    TF_AVAILABLE = True
+    print("✅ TensorFlow loaded successfully")
+except Exception as e:
+    print(f"⚠️ TensorFlow not available: {e}. Using mock predictions.")
 
 app = Flask(__name__)
 CORS(app)
@@ -21,20 +29,18 @@ classes = [
     'Sirohi', 'Beetal', 'Jamunapari'
 ]
 
-if os.path.exists(MODEL_PATH):
-    model = tf.keras.models.load_model(MODEL_PATH)
-    print("✅ Model loaded successfully")
+if TF_AVAILABLE and os.path.exists(MODEL_PATH):
+    try:
+        model = tf.keras.models.load_model(MODEL_PATH)
+        print("✅ Model loaded successfully")
+    except Exception as e:
+        print(f"⚠️ Could not load model: {e}")
 else:
-    print("⚠️ Model file not found. Prediction will use dummy data or fail.")
+    print("⚠️ Model file not found or TF unavailable. Using mock predictions.")
 
 animal_detector = None
-try:
-    print("Loading general animal detection model (MobileNetV2)...")
-    from tensorflow.keras.applications import MobileNetV2
-    animal_detector = MobileNetV2(weights='imagenet')
-    print("✅ Animal detection model loaded.")
-except Exception as e:
-    print(f"⚠️ Failed to load animal detector: {e}")
+print("ℹ️ Animal detector skipped (mock YOLO used instead). Saves RAM on free tier.")
+
 
 if os.path.exists(CLASSES_PATH):
     with open(CLASSES_PATH, 'r') as f:
