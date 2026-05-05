@@ -75,7 +75,8 @@ const Dashboard = () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
-      const res = await axios.get(`/api/prediction/history`, { headers: { 'x-auth-token': token } });
+      const API_BASE = import.meta.env.VITE_API_URL || '';
+      const res = await axios.get(`${API_BASE}/api/prediction/history`, { headers: { 'x-auth-token': token } });
       setHistory(res.data);
     } catch (err) {}
   };
@@ -441,14 +442,14 @@ const Dashboard = () => {
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold text-slate-700 text-center">Original Image</h3>
                         <div className="rounded-2xl overflow-hidden border-2 border-gray-100 shadow-xl bg-gray-50 aspect-video flex items-center justify-center relative">
-                            <img src={`http://localhost:5000${result.imageUrl}`} alt="Original" className="w-full h-full object-contain" />
+                            <img src={`${import.meta.env.VITE_API_URL || ''}${result.imageUrl}`} alt="Original" className="w-full h-full object-contain" />
                         </div>
                     </div>
                     <div className="space-y-4">
                         <h3 className="text-xl font-bold text-slate-700 text-center">AI Heatmap</h3>
                         <div className="rounded-2xl overflow-hidden border-2 border-purple-300 shadow-[0_0_20px_rgba(168,85,247,0.2)] bg-gray-50 aspect-video flex items-center justify-center relative group">
                             <div className="absolute inset-0 bg-gradient-to-t from-purple-900/10 opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none"></div>
-                            <img src={`http://localhost:5000${result.heatmapUrl}`} alt="Grad-CAM Heatmap" className="w-full h-full object-contain" />
+                            <img src={`${import.meta.env.VITE_API_URL || ''}${result.heatmapUrl}`} alt="Grad-CAM Heatmap" className="w-full h-full object-contain" />
                         </div>
                     </div>
                 </div>
