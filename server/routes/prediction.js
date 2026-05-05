@@ -61,10 +61,12 @@ router.post('/predict/:species', [auth, upload.single('image')], async (req, res
         formData.append('image', fs.createReadStream(imagePath));
 
         // Call Python Flask API
-        const response = await axios.post(`http://localhost:8000/predict/${species}`, formData, {
+        const AI_URL = process.env.AI_SERVICE_URL || 'http://localhost:8000';
+        const response = await axios.post(`${AI_URL}/predict/${species}`, formData, {
             headers: {
                 ...formData.getHeaders()
-            }
+            },
+            timeout: 120000 // 2 minute timeout for cold starts on free tier
         });
 
         const { prediction, confidence, top3, info, heatmap, quality } = response.data;
