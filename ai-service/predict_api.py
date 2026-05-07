@@ -20,28 +20,35 @@ PROTO_FILE = "prototypes.json"
 
 session = None
 prototypes = None
+load_error = None
 
 def load_model():
-    global session, prototypes
+    global session, prototypes, load_error
+    import traceback
     try:
         from huggingface_hub import hf_hub_download
         import onnxruntime as ort
 
         print("📥 Downloading model from HuggingFace (first run only)...")
         model_path = hf_hub_download(MODEL_REPO, MODEL_FILE)
-        proto_path  = hf_hub_download(MODEL_REPO, PROTO_FILE)
+        print(f"✅ model.onnx downloaded to: {model_path}")
+        proto_path = hf_hub_download(MODEL_REPO, PROTO_FILE)
+        print(f"✅ prototypes.json downloaded to: {proto_path}")
 
         session = ort.InferenceSession(model_path, providers=["CPUExecutionProvider"])
         with open(proto_path, "r") as f:
             prototypes = json.load(f)
 
-        print(f"✅ Real model loaded. Breeds: {list(prototypes['prototypes'].keys())}")
+        print(f"✅ Real model loaded! Breeds: {list(prototypes['prototypes'].keys())}")
+        load_error = None
     except Exception as e:
-        print(f"⚠️ Could not load real model: {e}. Will use mock predictions.")
+        tb = traceback.format_exc()
+        print(f"❌ Model load FAILED: {e}\n{tb}")
+        load_error = str(e) + "\n" + tb
         session = None
         prototypes = None
 
-# Load synchronously at startup — gunicorn timeout is set to 120s in Procfile
+# Load synchronously at startup
 load_model()
 
 # ---------------------------------------------------------------------------
@@ -52,7 +59,8 @@ def health():
     return jsonify({
         "status": "ok",
         "model_loaded": session is not None,
-        "mock_mode": session is None
+        "mock_mode": session is None,
+        "error": load_error
     })
 
 # ---------------------------------------------------------------------------
