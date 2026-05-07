@@ -110,6 +110,33 @@ const UploadSection = ({ onPredictionStart, onPredictionSuccess, onPredictionErr
     onPredictionStart();
     const token = localStorage.getItem('token');
     
+    // Helper: fetch with auto-retry on 502/503 (Render free tier cold start)
+    const fetchWithRetry = async (url, options, maxRetries = 3) => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 120000); // 2 min timeout
+          const response = await fetch(url, { ...options, signal: controller.signal });
+          clearTimeout(timeoutId);
+          if ((response.status === 502 || response.status === 503) && attempt < maxRetries) {
+            toast.loading(`Server waking up... retrying (${attempt}/${maxRetries})`, { id: 'retry' });
+            await new Promise(r => setTimeout(r, 5000 * attempt)); // wait 5s, 10s
+            continue;
+          }
+          toast.dismiss('retry');
+          return response;
+        } catch (err) {
+          if (attempt < maxRetries) {
+            toast.loading(`Connection timeout, retrying (${attempt}/${maxRetries})...`, { id: 'retry' });
+            await new Promise(r => setTimeout(r, 5000 * attempt));
+            continue;
+          }
+          toast.dismiss('retry');
+          throw err;
+        }
+      }
+    };
+
     try {
       let lastData = null;
       let lastError = null;
@@ -121,11 +148,16 @@ const UploadSection = ({ onPredictionStart, onPredictionSuccess, onPredictionErr
         formData.append('image', file, filename);
 
         const API_BASE = import.meta.env.VITE_API_URL || '';
-        const response = await fetch(`${API_BASE}/api/prediction/predict/${species}`, {
+        
+        toast.loading('Analyzing image... (may take 30s on first request)', { id: 'analyzing' });
+        
+        const response = await fetchWithRetry(`${API_BASE}/api/prediction/predict/${species}`, {
           method: 'POST',
           headers: { 'x-auth-token': token },
           body: formData
         });
+
+        toast.dismiss('analyzing');
 
         if (response.ok) {
           lastData = await response.json();
@@ -142,7 +174,7 @@ const UploadSection = ({ onPredictionStart, onPredictionSuccess, onPredictionErr
             break;
           }
 
-          const msg = errObj.trace ? `Python crash: ${errObj.error}` : errObj.error || errObj.msg || errText.substring(0, 50);
+          const msg = errObj.trace ? `Python crash: ${errObj.error}` : errObj.error || errObj.msg || errText.substring(0, 80);
           console.error('Failed to upload file', errText);
           toast.error(`Upload failed: ${msg}`);
           break;
@@ -158,7 +190,8 @@ const UploadSection = ({ onPredictionStart, onPredictionSuccess, onPredictionErr
       }
     } catch (err) {
       console.error('Upload error:', err);
-      toast.error('Error connecting to server. Please check your connection.');
+      toast.dismiss('analyzing');
+      toast.error('Server is starting up. Please wait 30 seconds and try again.');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
