@@ -68,10 +68,12 @@ def train_model():
     model.save('buffalo_breed_model.h5')
     print("Model saved as buffalo_breed_model.h5")
 
-    # Save classes
+    # Save classes — sorted by their index so classes.txt order matches model output indices
     with open('classes.txt', 'w') as f:
-        for cls in train_generator.class_indices.keys():
+        sorted_classes = sorted(train_generator.class_indices.keys(), key=lambda c: train_generator.class_indices[c])
+        for cls in sorted_classes:
             f.write(f"{cls}\n")
+    print(f"Saved classes: {sorted_classes}")
 
 if __name__ == "__main__":
     if os.path.exists(DATASET_DIR):

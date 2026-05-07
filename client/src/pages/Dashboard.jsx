@@ -332,6 +332,16 @@ const Dashboard = () => {
                 </div>
             )}
 
+            {/* Mock Prediction Warning */}
+            {result.mock && (
+                <div className="lg:col-span-12 bg-amber-500/10 border border-amber-400/40 text-amber-700 p-4 rounded-2xl flex items-center gap-3 font-semibold text-base">
+                    <AlertTriangle className="shrink-0 text-amber-500" size={22} />
+                    <span>
+                        <strong>Demo Mode:</strong> The AI model is not loaded on the server, so this result is a <strong>simulated prediction</strong> — not a real analysis. To get accurate results, ensure <code className="bg-amber-100 px-1 rounded text-sm">buffalo_breed_model.h5</code> is present in the <code className="bg-amber-100 px-1 rounded text-sm">ai-service/</code> folder and TensorFlow is installed.
+                    </span>
+                </div>
+            )}
+
             {/* Action Bar */}
             <div className="lg:col-span-12 flex flex-wrap justify-end gap-3 mb-[-1rem]">
                 <button onClick={() => setShowMilkCalc(true)} className={`flex items-center gap-2 text-white shadow-lg px-4 py-2 rounded-xl transition-all text-sm font-semibold hover:-translate-y-1 ${activeSection === 'buffalo' ? 'bg-gradient-to-r from-orange-400 to-orange-600 hover:shadow-orange-500/50' : 'bg-gradient-to-r from-emerald-400 to-emerald-600 hover:shadow-emerald-500/50'}`}>
