@@ -94,7 +94,9 @@ const Dashboard = () => {
     setIsAnalyzing(false);
     setErrorResult(errObj);
     if (errObj.error === 'Species-Breed Mismatch') {
-        toast.error('Species mismatch detected!', { icon: '⚠️' });
+        toast.error('Wrong section! Buffalo in Cattle or vice versa.', { icon: '⚠️' });
+    } else if (errObj.error === 'Not a livestock animal') {
+        toast.error('No animal detected in image!', { icon: '🚫' });
     }
   };
 
@@ -274,47 +276,74 @@ const Dashboard = () => {
                         <AlertTriangle className="text-rose-500" size={32} />
                     </div>
                     <div>
-                        <h2 className="text-3xl font-black text-slate-800">⚠️ Species-Breed Mismatch</h2>
-                        <p className="text-rose-600 font-semibold">{errorResult.error}</p>
+                        <h2 className="text-3xl font-black text-slate-800">⚠️ Wrong Section!</h2>
+                        <p className="text-rose-600 font-semibold">Species-Breed Mismatch Detected</p>
                     </div>
                 </div>
-                
                 <div className="p-6 bg-white rounded-3xl border-l-4 border-rose-500 mb-8 shadow-sm">
                     <p className="text-slate-800 text-xl font-medium">{errorResult.message}</p>
                 </div>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div className="bg-white p-6 rounded-2xl border border-rose-100 shadow-sm">
-                        <p className="text-xs text-rose-500 font-black uppercase mb-2 tracking-widest">Detected Species</p>
+                        <p className="text-xs text-rose-500 font-black uppercase mb-2 tracking-widest">AI Detected Animal</p>
                         <p className="text-2xl font-bold text-slate-800 capitalize flex items-center justify-between">
-                            {errorResult.detected_species}
+                            {errorResult.detected_species === 'buffalo' ? '🐃 Buffalo' : '🐄 Cattle/Cow'}
                             <span className="text-sm font-bold text-white bg-rose-500 px-3 py-1 rounded-full shadow-sm">
-                                {Math.round(errorResult.species_confidence * 100)}% Conf
+                                {Math.round((errorResult.species_confidence || 0) * 100)}% Sure
                             </span>
                         </p>
                     </div>
                     <div className="bg-white p-6 rounded-2xl border border-orange-100 shadow-sm">
-                        <p className="text-xs text-orange-500 font-black uppercase mb-2 tracking-widest">Mismatched Prediction</p>
-                        <p className="text-2xl font-bold text-slate-800 flex items-center justify-between">
-                            {errorResult.predicted_breed}
-                            <span className="text-sm font-bold text-white bg-orange-400 px-3 py-1 rounded-full shadow-sm">
-                                {Math.round(errorResult.breed_confidence * 100)}% Conf
-                            </span>
-                        </p>
+                        <p className="text-xs text-orange-500 font-black uppercase mb-2 tracking-widest">Closest Breed Match</p>
+                        <p className="text-2xl font-bold text-slate-800">{errorResult.detected_breed}</p>
                     </div>
                 </div>
-                
                 <div className="bg-blue-50 border border-blue-100 p-6 rounded-2xl flex items-start space-x-4 shadow-sm">
                     <Info className="text-blue-500 shrink-0 mt-1" size={24} />
                     <div>
-                        <h4 className="text-blue-600 font-bold text-lg mb-1">Recommended Action</h4>
+                        <h4 className="text-blue-600 font-bold text-lg mb-1">What to do</h4>
                         <p className="text-slate-700 font-medium">{errorResult.suggestion}</p>
                     </div>
                 </div>
-                
                 <div className="mt-8 flex justify-end">
                     <button onClick={() => setErrorResult(null)} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-blue-600/30 hover:-translate-y-1 transition-all py-3 px-8 text-lg font-bold rounded-xl flex items-center gap-2">
-                        Acknowledge & Try Another
+                        Try Again
+                    </button>
+                </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {errorResult && errorResult.error === 'Not a livestock animal' && (
+          <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} transition={{ duration: 0.5 }} className="max-w-4xl mx-auto mt-16 relative z-10">
+            <div className="bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 rounded-[2.5rem] p-10 relative overflow-hidden shadow-2xl">
+                <div className="flex items-center space-x-4 mb-6">
+                    <div className="bg-white p-4 rounded-2xl border border-gray-200 shadow-sm text-4xl">🚫</div>
+                    <div>
+                        <h2 className="text-3xl font-black text-slate-800">No Animal Detected</h2>
+                        <p className="text-gray-500 font-semibold">Image does not contain recognisable livestock</p>
+                    </div>
+                </div>
+                <div className="p-6 bg-white rounded-3xl border-l-4 border-gray-400 mb-8 shadow-sm">
+                    <p className="text-slate-700 text-xl font-medium">{errorResult.message}</p>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 p-6 rounded-2xl flex items-start space-x-4 shadow-sm">
+                    <Info className="text-amber-500 shrink-0 mt-1" size={24} />
+                    <div>
+                        <h4 className="text-amber-600 font-bold text-lg mb-1">Tips for a good photo</h4>
+                        <ul className="text-slate-700 font-medium space-y-1 list-disc list-inside">
+                            <li>Animal should be clearly visible and fill most of the frame</li>
+                            <li>Good lighting — avoid dark or blurry images</li>
+                            <li>Side or front view of the animal works best</li>
+                            <li>Avoid images with multiple animals or heavy background clutter</li>
+                        </ul>
+                    </div>
+                </div>
+                <div className="mt-8 flex justify-end">
+                    <button onClick={() => setErrorResult(null)} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:-translate-y-1 transition-all py-3 px-8 text-lg font-bold rounded-xl">
+                        Try Another Image
                     </button>
                 </div>
             </div>

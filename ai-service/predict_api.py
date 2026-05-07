@@ -192,36 +192,86 @@ def predict(species):
             input_name = session.get_inputs()[0].name
             features = session.run(None, {input_name: inp})[0][0]   # 2048-dim vector
 
-            # Cosine similarity against breed prototypes
+            # Cosine similarity against ALL breed prototypes
             scores = {}
             for breed, proto in prototypes["prototypes"].items():
                 proto_arr = np.array(proto, dtype=np.float32)
-                # Both vectors are L2-normalised in the model card
                 sim = float(np.dot(features, proto_arr) /
                             (np.linalg.norm(features) * np.linalg.norm(proto_arr) + 1e-8))
                 scores[breed] = sim
 
-            # Filter to requested species only
+            # --- SPECIES MISMATCH DETECTION ---
+            # Find the globally best breed across ALL species
+            all_ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
+            best_breed_overall = all_ranked[0][0]
+            best_score_overall = all_ranked[0][1]
+
+            # Determine what species the image actually is
+            if best_breed_overall in HF_BUFFALO:
+                detected_species = "buffalo"
+            elif best_breed_overall in HF_CATTLE:
+                detected_species = "cattle"
+            else:
+                detected_species = "unknown"
+
+            # Compute buffalo vs cattle group scores
+            buffalo_scores = [s for b, s in scores.items() if b in HF_BUFFALO]
+            cattle_scores  = [s for b, s in scores.items() if b in HF_CATTLE]
+            avg_buffalo = sum(buffalo_scores) / len(buffalo_scores) if buffalo_scores else 0
+            avg_cattle  = sum(cattle_scores)  / len(cattle_scores)  if cattle_scores  else 0
+
+            # Decide actual species by group average
+            actual_species = "buffalo" if avg_buffalo > avg_cattle else "cattle"
+
+            # Confidence gap — how strongly does the model prefer one species over the other
+            species_gap = abs(avg_buffalo - avg_cattle)
+            # Normalise gap to 0-1 confidence
+            species_confidence = round(min(0.5 + species_gap * 10, 0.99), 2)
+
+            # If species doesn't match what user selected → return mismatch error
+            if actual_species != species:
+                wrong_label   = "Buffalo" if actual_species == "buffalo" else "Cattle/Cow"
+                correct_label = "Cattle/Cow" if actual_species == "buffalo" else "Buffalo"
+                # Get top breed of the actual detected species for the error message
+                actual_hf_set = HF_BUFFALO if actual_species == "buffalo" else HF_CATTLE
+                actual_ranked = sorted(
+                    [(b, s) for b, s in scores.items() if b in actual_hf_set],
+                    key=lambda x: x[1], reverse=True
+                )
+                detected_breed = normalise(actual_ranked[0][0]) if actual_ranked else best_breed_overall
+
+                return jsonify({
+                    "error":              "Species-Breed Mismatch",
+                    "message":            f"This image looks like a {wrong_label}, but you uploaded it in the {correct_label} section.",
+                    "detected_species":   actual_species,
+                    "requested_species":  species,
+                    "detected_breed":     detected_breed,
+                    "species_confidence": species_confidence,
+                    "suggestion":         f"Please upload this image in the {wrong_label} section instead.",
+                }), 422
+
+            # --- IMAGE QUALITY / NOT AN ANIMAL CHECK ---
+            # If the best score across all breeds is very low, image is likely not a livestock animal
+            if best_score_overall < 0.3:
+                return jsonify({
+                    "error":      "Not a livestock animal",
+                    "message":    "The image does not appear to contain a recognisable cattle or buffalo. Please upload a clear photo of the animal.",
+                    "suggestion": "Make sure the animal is clearly visible, well-lit, and takes up most of the frame.",
+                }), 422
+
+            # --- NORMAL PREDICTION (species matches) ---
+            hf_valid = HF_BUFFALO if species == "buffalo" else HF_CATTLE
             filtered = {b: s for b, s in scores.items() if b in hf_valid}
-            if not filtered:
-                filtered = scores   # fallback: use all scores
+            ranked   = sorted(filtered.items(), key=lambda x: x[1], reverse=True)
 
-            # Sort descending
-            ranked = sorted(filtered.items(), key=lambda x: x[1], reverse=True)
-
-            # Normalise scores to [0,1] range for display
-            top_raw   = ranked[0][1]
+            top_raw    = ranked[0][1]
             bottom_raw = ranked[-1][1]
             span = max(top_raw - bottom_raw, 1e-6)
 
             def norm_conf(s):
-                # Map to 0.55–0.97 range so it looks realistic
                 return round(0.55 + 0.42 * (s - bottom_raw) / span, 4)
 
-            results = [
-                {"breed": normalise(b), "confidence": norm_conf(s)}
-                for b, s in ranked[:3]
-            ]
+            results    = [{"breed": normalise(b), "confidence": norm_conf(s)} for b, s in ranked[:3]]
             main_breed = results[0]["breed"]
             confidence = results[0]["confidence"]
             is_mock    = False

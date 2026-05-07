@@ -134,8 +134,14 @@ const UploadSection = ({ onPredictionStart, onPredictionSuccess, onPredictionErr
           const errText = await response.text();
           let errObj = {};
           try { errObj = JSON.parse(errText); } catch(e) {}
-          
+
           lastError = errObj;
+
+          // 422 = structured error (mismatch / not-animal) — pass to onPredictionError, don't toast
+          if (response.status === 422) {
+            break;
+          }
+
           const msg = errObj.trace ? `Python crash: ${errObj.error}` : errObj.error || errObj.msg || errText.substring(0, 50);
           console.error('Failed to upload file', errText);
           toast.error(`Upload failed: ${msg}`);
