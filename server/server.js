@@ -36,6 +36,22 @@ app.get('/', (req, res) => {
     res.json({ message: 'Buffalo Breed Recognition API is running...' });
 });
 
+// ── Keep-alive: ping both services every 10 minutes so Render never sleeps ──
+const axios = require('axios');
+const SELF_URL    = process.env.RENDER_EXTERNAL_URL || `http://localhost:${PORT}`;
+const AI_URL_PING = process.env.AI_SERVICE_URL      || 'http://localhost:8000';
+
+setInterval(async () => {
+    try {
+        await axios.get(`${SELF_URL}/`);
+        console.log('✅ Self keep-alive ping sent');
+    } catch (e) { /* ignore */ }
+    try {
+        await axios.get(`${AI_URL_PING}/health`);
+        console.log('✅ AI service keep-alive ping sent');
+    } catch (e) { /* ignore */ }
+}, 10 * 60 * 1000); // every 10 minutes
+
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
