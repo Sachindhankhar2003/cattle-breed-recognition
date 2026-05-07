@@ -1,6 +1,8 @@
-flask
-flask-cors
-numpy
-pillow
-werkzeug
-gunicorn
+flask==3.0.3
+flask-cors==4.0.1
+numpy==1.26.4
+pillow==10.3.0
+werkzeug==3.0.3
+gunicorn==22.0.0
+onnxruntime==1.18.0
+huggingface_hub==0.23.4
