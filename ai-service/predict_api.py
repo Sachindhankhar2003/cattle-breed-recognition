@@ -41,9 +41,8 @@ def load_model():
         session = None
         prototypes = None
 
-# Load in background thread so gunicorn starts fast and doesn't time out
-import threading
-threading.Thread(target=load_model, daemon=True).start()
+# Load synchronously at startup — gunicorn timeout is set to 120s in Procfile
+load_model()
 
 # ---------------------------------------------------------------------------
 # Health check endpoint
